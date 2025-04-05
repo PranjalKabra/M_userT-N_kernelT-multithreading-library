@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "time.h": "c",
+        "mn_thread.h": "c"
+    }
+}
