@@ -16,11 +16,8 @@ void mn_thread_yield(int current_thread_index) {
     // Find the next thread in the same kernel thread group
     int next_thread = -1;
     int threads_checked = 0;
-    int num_kthreads = 4;
-    //int base_index = current_kthread;  // Start with the kernel thread ID
-    
-    // Calculate the next thread ID based on the thread allocation pattern
-    // Pattern is: k_id + j*NUM_KTHREADS where j is 0 to THREADS_PER_KTHREAD-1
+    //int num_kthreads = 4;
+
     // Find current j value for prev_thread
     int j_value = (prev_thread - current_kthread) / num_kthreads;
     
@@ -65,8 +62,7 @@ void mn_thread_yield(int current_thread_index) {
 }
 
 void mn_thread_exit(int current_thread_index) {
-    printf("Exiting thread %d (K-Thread %d)\n", 
-           current_thread_index, uthreads[current_thread_index].kernel_thread_id);
+    printf("Exiting thread %d (K-Thread %d)\n", current_thread_index, uthreads[current_thread_index].kernel_thread_id);
     uthreads[current_thread_index].state = THREAD_TERMINATED;
     
     // Free stack memory safely

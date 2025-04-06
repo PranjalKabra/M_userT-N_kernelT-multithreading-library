@@ -15,9 +15,9 @@
 #define STACK_SIZE  8192   // Stack size per thread
 
 // roundrobin declarations
-#define TIME_QUANTUM 5
-#define BURST_TIME 12
-#define THREADS_PER_KTHREAD 4
+// #define TIME_QUANTUM 5
+// #define BURST_TIME 12
+// #define THREADS_PER_KTHREAD 4
 
 typedef struct mn_thread {
     ucontext_t context;
@@ -42,11 +42,15 @@ extern mn_kernel_thread_t kthreads[MAX_KTHREADS];
 extern int current_thread_per_kthread[MAX_KTHREADS]; 
 extern ucontext_t main_context; // main context for the main thread
 
+// global variables -> to be intialized in example file while u are using in example file
+extern int num_uthreads;
+extern int num_kthreads;
+extern int threads_per_kthread;
+extern int burst_time;
+extern int time_quantum;
 
-//extern int next_tid;
-//extern ucontext_t main_context;
-// next_tid is a global variable that keeps track of the next thread ID to be assigned.
-// API Functions
+// function prototypes
+void mn_thread_init(int n_uthreads, int n_kthreads, int t_quantum, int b_time);
 int mn_thread_create(mn_thread_t* thread, void (*start_routine)(void*), void* arg);
 void mn_thread_yield();
 void mn_thread_exit();

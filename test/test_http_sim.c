@@ -5,17 +5,23 @@
 #include <signal.h>
 #include <sys/time.h>
 
-#define NUM_UTHREADS 16
-#define NUM_KTHREADS 4
+// #define NUM_UTHREADS 16
+// #define NUM_KTHREADS 4
 #define NUM_PAGES 16
 
-int remaining_time[NUM_UTHREADS];
+const int temp_num_threads = 16;
+// const int num_kthreads = 4;
+// const int threads_per_kthread = 4;
+// const int burst_time = 12;
+// const int time_quantum = 5;
+
+//int remaining_time[temp_num_threads];
 
 void simulate_http_request(void* arg) {
     int thread_id = *(int*)arg;
     int kernel_thread_id = uthreads[thread_id].kernel_thread_id;
-    int burst_remaining = BURST_TIME;
-    int x = BURST_TIME % TIME_QUANTUM;
+    int burst_remaining = burst_time;
+    int x = burst_time % time_quantum;
 
     while (burst_remaining > 0) {
         printf("[K-Thread %d] U-Thread-%d: Fetching request from page-%d (Remaining: %d)\n", 
@@ -24,7 +30,7 @@ void simulate_http_request(void* arg) {
         // simulation of work
         sleep(1);
         burst_remaining--;
-        if (burst_remaining % TIME_QUANTUM == x) {
+        if (burst_remaining % time_quantum == x) {
             printf("[K-Thread %d] U-Thread-%d: Quantum expired, yielding\n",  kernel_thread_id, thread_id);
             mn_thread_yield(thread_id);
         }
@@ -77,10 +83,12 @@ void* kernel_thread_function(void* arg) {
 }
 
 int main() {
-    int* thread_ids[NUM_UTHREADS];
+    mn_thread_init(16, 4, 5, 12); // 16 uthreads, 4 kthreads, quantum 5, burst 12
+    int* thread_ids[num_uthreads];
+
     
     // Initialization of k thread array
-    for(int i=0; i<NUM_KTHREADS; i++){
+    for(int i=0; i<num_kthreads; i++){
         current_thread_per_kthread[i] = -1;
         kthreads[i].id = i;
         kthreads[i].num_assigned =0;
@@ -89,18 +97,18 @@ int main() {
 
     printf("\n=== HTTP Request Simulation with Round-Robin M:N Threading ===\n");
     printf("Configuration: %d user threads mapped to %d kernel threads\n", 
-           NUM_UTHREADS, NUM_KTHREADS);
+        num_uthreads, num_kthreads);
     printf("Time Quantum: %d units, Burst Time: %d units\n\n",
-           TIME_QUANTUM, BURST_TIME);
+           time_quantum, burst_time);
 
     // initializationf of k threads and assign their respective user threads
-    for (int i = 0; i < NUM_KTHREADS; i++) {
+    for (int i = 0; i < num_kthreads; i++) {
         
-        for (int j = 0; j < THREADS_PER_KTHREAD; j++) {
+        for (int j = 0; j < threads_per_kthread; j++) {
             int thread_idx = i + (j * 4); 
             thread_ids[thread_idx] = malloc(sizeof(int));
             *thread_ids[thread_idx] = thread_idx;
-            remaining_time[thread_idx] = BURST_TIME;
+            //remaining_time[thread_idx] = burst_time;
 
             // Allocate stack per user thread
             uthreads[thread_idx].context.uc_stack.ss_sp = malloc(STACK_SIZE); // set the stack ponter
@@ -133,14 +141,14 @@ int main() {
     printf("\n=== Starting Parallel Execution ===\n\n");
 
     // Wait for kernel threads to complete
-    for(int i = 0; i < NUM_KTHREADS; i++) {
+    for(int i = 0; i < num_kthreads; i++) {
         pthread_join(kthreads[i].pthread, NULL);
     }
 
     printf("\n=== Simulation Complete ===\n");
 
     // Cleanup
-    for(int i = 0; i < NUM_UTHREADS; i++) {
+    for(int i = 0; i < num_uthreads; i++) {
         free(thread_ids[i]);
         if (uthreads[i].context.uc_stack.ss_sp) {
             free(uthreads[i].context.uc_stack.ss_sp);
