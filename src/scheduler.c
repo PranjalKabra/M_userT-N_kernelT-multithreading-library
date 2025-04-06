@@ -22,18 +22,18 @@ void mn_thread_yield(int current_thread_index) {
     int j_value = (prev_thread - current_kthread) / num_kthreads;
     
     // Try the next j value, or wrap around to 0
-    j_value = (j_value + 1) % 4;
-    next_thread = current_kthread + (j_value * 4);
+    j_value = (j_value + 1) % threads_per_kthread;
+    next_thread = current_kthread + (j_value * num_kthreads);
     
     // If the calculated thread is terminated, find the next available one
     while (uthreads[next_thread].state == THREAD_TERMINATED && threads_checked < 4) {
-        j_value = (j_value + 1) % 4;
-        next_thread = current_kthread + (j_value * 4);
+        j_value = (j_value + 1) % threads_per_kthread;
+        next_thread = current_kthread + (j_value * num_kthreads);
         threads_checked++;
     }
     
     // If all threads are terminated, return to kernel thread
-    if (threads_checked >= 4) {
+    if (threads_checked >= threads_per_kthread) {
         printf("All threads in kernel thread %d terminated.\n", current_kthread);
         current_thread_per_kthread[current_kthread] = -1;
         

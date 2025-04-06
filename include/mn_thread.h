@@ -56,6 +56,7 @@ void mn_thread_yield();
 void mn_thread_exit();
 void mn_thread_cancel(mn_thread_t* thread);
 void mn_thread_join(mn_thread_t* thread);
+void mn_thread_wait(mn_kernel_thread_t* kthread);
 void mn_thread_map();
 
 

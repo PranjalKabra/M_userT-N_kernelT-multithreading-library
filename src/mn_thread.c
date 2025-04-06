@@ -57,6 +57,28 @@ int mn_thread_create(mn_thread_t* thread, void (*start_routine)(void*), void* ar
     return 0;
 }
 
+void mn_thread_wait(mn_kernel_thread_t* kthread) {
+    while (1) {
+        int completed = 0;
+
+        // Check if both user threads assigned to this kernel thread have terminated
+        for (int i = 0; i < threads_per_kthread; i++) {
+            if (kthread->assigned_threads[i]->state == THREAD_TERMINATED) {
+                completed++;
+            }
+        }
+
+        // If both user threads have completed, exit the wait loop
+        if (completed == threads_per_kthread) {
+            return;
+        }
+
+        // sleep briefly to avoid busy waiting
+        usleep(10); // sched_yield() can be used here
+    }
+}
+
+
 void mn_thread_map() {
     printf("User Thread -> Kernel Thread Mapping:\n");
     for (int i = 0; i < num_uthreads; i++) {
