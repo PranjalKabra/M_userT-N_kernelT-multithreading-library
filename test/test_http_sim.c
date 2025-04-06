@@ -7,56 +7,25 @@
 
 #define NUM_UTHREADS 16
 #define NUM_KTHREADS 4
-// #define THREADS_PER_KTHREAD (NUM_UTHREADS/NUM_KTHREADS)
 #define NUM_PAGES 16
 
-
-// Global array to track current thread per kernel thread
-// mn_thread_t uthreads[MAX_UTHREADS];
-// mn_kernel_thread_t kthreads[MAX_KTHREADS];
-// ucontext_t main_context;
-
-//nt current_thread_per_kthread[NUM_KTHREADS];
-
-// Track remaining burst time for each thread
 int remaining_time[NUM_UTHREADS];
-struct itimerval timer;
-
-// Function prototype for mn_thread_yield
-void mn_thread_yield(int current_thread_index);
-
-// Signal handler for timer
-void timer_handler(int signum) {
-    // Find which kernel thread is currently running
-    for (int k = 0; k < NUM_KTHREADS; k++) {
-        if (current_thread_per_kthread[k] != -1) {
-            int thread_id = current_thread_per_kthread[k];
-            printf("[TIMER] Preempting U-Thread-%d on K-Thread %d\n", thread_id, k);
-            
-            // Yield the current thread to the next one
-            mn_thread_yield(thread_id);
-        }
-    }
-}
 
 void simulate_http_request(void* arg) {
     int thread_id = *(int*)arg;
     int kernel_thread_id = uthreads[thread_id].kernel_thread_id;
     int burst_remaining = BURST_TIME;
+    int x = BURST_TIME % TIME_QUANTUM;
 
     while (burst_remaining > 0) {
         printf("[K-Thread %d] U-Thread-%d: Fetching request from page-%d (Remaining: %d)\n", 
                kernel_thread_id, thread_id, thread_id, burst_remaining);
 
-        // Simulate work by sleeping for a short duration
+        // simulation of work
         sleep(1);
         burst_remaining--;
-        
-        // If preemption point reached, yield voluntarily
-        // Note: In a real scenario, timer would handle this automatically
-        if (burst_remaining % TIME_QUANTUM == 0) {
-            printf("[K-Thread %d] U-Thread-%d: Quantum expired, yielding\n", 
-                   kernel_thread_id, thread_id);
+        if (burst_remaining % TIME_QUANTUM == x) {
+            printf("[K-Thread %d] U-Thread-%d: Quantum expired, yielding\n",  kernel_thread_id, thread_id);
             mn_thread_yield(thread_id);
         }
     }
@@ -69,16 +38,9 @@ void simulate_http_request(void* arg) {
 void* kernel_thread_function(void* arg) {
     mn_kernel_thread_t* kthread = (mn_kernel_thread_t*)arg;
     int k_id = kthread->id;
-
-    //printf("Kernel Thread %d started with threads: ", k_id);
-    // for (int i = 0; i <4; i++) {
-    //     printf("%d ",kthread->assigned_threads[i]->id);
-    // }
-    // printf("\n");
-
     getcontext(&kthread->k_context);
 
-    // Start the first thread in this kernel thread's group
+    //when the first thread is starting, the first thread id will be same as kernel thread id k_id
     int first_thread_id = kthread->assigned_threads[0]->id;
     current_thread_per_kthread[k_id] = first_thread_id;
     
@@ -88,7 +50,7 @@ void* kernel_thread_function(void* arg) {
     // Switch to the first thread, saving kernel thread context
     swapcontext(&kthread->k_context, &uthreads[first_thread_id].context);
     
-    // Main loop - run as long as there are active threads
+    // run loop as long as any thread is active
     while (1) {
         int all_done = 1;
         
@@ -117,7 +79,7 @@ void* kernel_thread_function(void* arg) {
 int main() {
     int* thread_ids[NUM_UTHREADS];
     
-    // Initialize the current thread tracking array
+    // Initialization of k thread array
     for(int i=0; i<NUM_KTHREADS; i++){
         current_thread_per_kthread[i] = -1;
         kthreads[i].id = i;
@@ -131,45 +93,40 @@ int main() {
     printf("Time Quantum: %d units, Burst Time: %d units\n\n",
            TIME_QUANTUM, BURST_TIME);
 
-    // Initialize kernel threads and their user threads
+    // initializationf of k threads and assign their respective user threads
     for (int i = 0; i < NUM_KTHREADS; i++) {
         
-
-        // Create user threads for this kernel thread
         for (int j = 0; j < THREADS_PER_KTHREAD; j++) {
-            int thread_idx = i + (j * 4);  // Fixed thread allocation pattern
+            int thread_idx = i + (j * 4); 
             thread_ids[thread_idx] = malloc(sizeof(int));
             *thread_ids[thread_idx] = thread_idx;
             remaining_time[thread_idx] = BURST_TIME;
 
-            // Allocate stack for the user thread
-            uthreads[thread_idx].context.uc_stack.ss_sp = malloc(STACK_SIZE);
+            // Allocate stack per user thread
+            uthreads[thread_idx].context.uc_stack.ss_sp = malloc(STACK_SIZE); // set the stack ponter
             if (uthreads[thread_idx].context.uc_stack.ss_sp == NULL) {
                 perror("Failed to allocate stack for user thread");
                 return -1;
             }
-            uthreads[thread_idx].context.uc_stack.ss_size = STACK_SIZE;
-            //uthreads[thread_idx].context.uc_stack.ss_flags = 0;
+
+            // set the thread identitiy and allocate it it's kernel thread before starting its routine
+  
             uthreads[thread_idx].id = thread_idx;
-            //uthreads[thread_idx].state = THREAD_READY;
             uthreads[thread_idx].kernel_thread_id = i;
 
 
-            // Create the user thread
+            // Create the user thread -> allocate stack, set context and set state and start routine
             if (mn_thread_create(&uthreads[thread_idx], simulate_http_request, thread_ids[thread_idx]) != 0) {
                 printf("Thread creation failed\n");
                 return -1;
             }
 
-            // Assign the user thread to the current kernel thread
             kthreads[i].assigned_threads[j] = &uthreads[thread_idx];
-            //printf("[K-Thread %d] Assigned U-Thread-%d at position%d\n", i, thread_idx,j);
             kthreads[i].num_assigned++;
         }
 
         // Create the kernel thread
-        pthread_create(&kthreads[i].pthread, NULL, 
-                      kernel_thread_function, &kthreads[i]);
+        pthread_create(&kthreads[i].pthread, NULL, kernel_thread_function, &kthreads[i]);
     }
 
     mn_thread_map();

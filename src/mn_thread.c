@@ -11,7 +11,6 @@ int current_thread_per_kthread[MAX_KTHREADS];
 int next_tid = 0;
 
 void wrapper_function(void* func, void* arg) {
-    //printf("wrapper function started fpr thread with arg = %p\n",arg);
     void (*start_routine)(void*) = func;
     start_routine(arg);
     mn_thread_exit();
@@ -20,9 +19,8 @@ void wrapper_function(void* func, void* arg) {
 int mn_thread_create(mn_thread_t* thread, void (*start_routine)(void*), void* arg) {
     if (thread->id >= MAX_UTHREADS) return -1;
 
-    //thread->id = thread->id % MAX_UTHREADS; // Ensure thread ID is within bounds
     thread->state = 1; // READY
-    thread->kernel_thread_id = thread->kernel_thread_id;
+    thread->kernel_thread_id = thread->kernel_thread_id;   /// alloted pehle se while creating the user thread
 
     if (getcontext(&thread->context) == -1) {
         perror("Failed to get context");

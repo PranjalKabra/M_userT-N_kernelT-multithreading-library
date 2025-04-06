@@ -2,11 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
-// mn_thread_t uthreads[MAX_UTHREADS];
-// mn_kernel_thread_t kthreads[MAX_KTHREADS];
-// ucontext_t main_context;
-
 void mn_thread_yield(int current_thread_index) {
     int prev_thread = current_thread_index;
     int current_kthread = uthreads[prev_thread].kernel_thread_id;
