@@ -1,14 +1,14 @@
 #include "../include/mn_thread.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
-#include <sys/time.h>
+#include <unistd.h>
 
 mn_thread_t uthreads[MAX_UTHREADS];
 mn_kernel_thread_t kthreads[MAX_KTHREADS];
 ucontext_t main_context;
 int current_thread_per_kthread[MAX_KTHREADS];
 
+// initialize the global variables
 int num_uthreads;
 int num_kthreads;
 int threads_per_kthread;
@@ -33,8 +33,8 @@ void wrapper_function(void* func, void* arg) {
 int mn_thread_create(mn_thread_t* thread, void (*start_routine)(void*), void* arg) {
     if (thread->id >= MAX_UTHREADS) return -1;
 
-    thread->state = 1; // READY
-    thread->kernel_thread_id = thread->kernel_thread_id;   /// alloted pehle se while creating the user thread
+    thread->state = 1; // readt_state
+    thread->kernel_thread_id = thread->kernel_thread_id;   /// alloted pehle se before creating the user thread
 
     if (getcontext(&thread->context) == -1) {
         perror("Failed to get context");
@@ -61,20 +61,20 @@ void mn_thread_wait(mn_kernel_thread_t* kthread) {
     while (1) {
         int completed = 0;
 
-        // Check if both user threads assigned to this kernel thread have terminated
+        // check if all user threads assigned to this kernel thread have terminated
         for (int i = 0; i < threads_per_kthread; i++) {
             if (kthread->assigned_threads[i]->state == THREAD_TERMINATED) {
                 completed++;
             }
         }
 
-        // If both user threads have completed, exit the wait loop
+        // if both user threads have completed, exit the wait loop
         if (completed == threads_per_kthread) {
             return;
         }
 
         // sleep briefly to avoid busy waiting
-        usleep(10); // sched_yield() can be used here
+        sleep(1); 
     }
 }
 

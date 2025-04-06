@@ -2,20 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <signal.h>
-#include <sys/time.h>
 
-// #define NUM_UTHREADS 16
-// #define NUM_KTHREADS 4
 #define NUM_PAGES 16
-
-const int temp_num_threads = 16;
-// const int num_kthreads = 4;
-// const int threads_per_kthread = 4;
-// const int burst_time = 12;
-// const int time_quantum = 5;
-
-//int remaining_time[temp_num_threads];
 
 void simulate_http_request(void* arg) {
     int thread_id = *(int*)arg;
@@ -24,8 +12,7 @@ void simulate_http_request(void* arg) {
     int x = burst_time % time_quantum;
 
     while (burst_remaining > 0) {
-        printf("[K-Thread %d] U-Thread-%d: Fetching request from page-%d (Remaining: %d)\n", 
-               kernel_thread_id, thread_id, thread_id, burst_remaining);
+        printf("[K-Thread %d] U-Thread-%d: Fetching request from page-%d (Remaining: %d)\n", kernel_thread_id, thread_id, thread_id, burst_remaining);
 
         // simulation of work
         sleep(1);
@@ -74,9 +61,9 @@ void* kernel_thread_function(void* arg) {
             break;
         }
         
-        // If we get here, it means we returned from a thread that yielded
+        // If we get here, it means we returned from a thread that hasn't terminated
         // and need to continue the scheduling loop
-        sleep(1); // Small delay to prevent CPU hogging
+        sleep(1); // Small delay
     }
 
     return NULL;
@@ -108,7 +95,6 @@ int main() {
             int thread_idx = i + (j * 4); 
             thread_ids[thread_idx] = malloc(sizeof(int));
             *thread_ids[thread_idx] = thread_idx;
-            //remaining_time[thread_idx] = burst_time;
 
             // Allocate stack per user thread
             uthreads[thread_idx].context.uc_stack.ss_sp = malloc(STACK_SIZE); // set the stack ponter
@@ -118,7 +104,6 @@ int main() {
             }
 
             // set the thread identitiy and allocate it it's kernel thread before starting its routine
-  
             uthreads[thread_idx].id = thread_idx;
             uthreads[thread_idx].kernel_thread_id = i;
 
@@ -133,14 +118,14 @@ int main() {
             kthreads[i].num_assigned++;
         }
 
-        // Create the kernel thread
+        // create the kernel thread
         pthread_create(&kthreads[i].pthread, NULL, kernel_thread_function, &kthreads[i]);
     }
 
     mn_thread_map();
     printf("\n=== Starting Parallel Execution ===\n\n");
 
-    // Wait for kernel threads to complete
+    // wait for all 4 kernel threads to complete
     for(int i = 0; i < num_kthreads; i++) {
         pthread_join(kthreads[i].pthread, NULL);
     }

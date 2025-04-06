@@ -2,68 +2,61 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <signal.h>
-#include <sys/time.h>
 
 #define N 15 // Must be a multiple of 3
 
-long long int partial_products[3]; // Stores results from each kernel thread
-long long int thread_results[6]; // Store individual thread results
+// M : USER THREADS -> 6
+// N : KERNEL THREADS -> 3
+
+long long int partial_products[3]; // to store the product carried out by each thread
+long long int thread_results[6]; // to store indivodual result for each thread
 
 void compute_partial_factorial(void* arg) {
     int thread_id = *(int*)arg;
     int kernel_thread_id = uthreads[thread_id].kernel_thread_id;
     
-    // Determine which half of the range this thread is responsible for
+    // what half range will this thread get
     int is_second_thread = (thread_id % 2 == 1);
     
-    // Calculate the range for each kernel thread
+    // range for each k thread
     int chunk_size = N / num_kthreads;
     int start_k = kernel_thread_id * chunk_size + 1;
     int end_k = start_k + chunk_size - 1;
     
-    // Divide the kernel thread's range between its two user threads
+    // allot the kthread range to each uthread
     int mid = (start_k + end_k) / 2;
     int start, end;
     
     if (!is_second_thread) {
-        // First user thread takes first half
         start = start_k;
         end = mid;
     } else {
-        // Second user thread takes second half
         start = mid + 1;
         end = end_k;
     }
     
-    // Compute the partial product
     long long product = 1LL;
     for (int i = start; i <= end; i++) {
         product *= i;
     }
-    // Store the result
+    // store the result
     thread_results[thread_id] = product;
     
-    printf("[K-Thread %d] U-Thread-%d computed product [%d-%d] = %lld\n", 
-           kernel_thread_id, thread_id, start, end, product);
+    printf("[K-Thread %d] U-Thread-%d computed product [%d-%d] = %lld\n", kernel_thread_id, thread_id, start, end, product);
     
-    
-    
-    // Mark thread as terminated
     uthreads[thread_id].state = THREAD_TERMINATED;
     
-    // Yield to allow the other thread to run
+    // yield to allow toher thread in the same kernel group to run
     mn_thread_yield(thread_id);
 }
 
 void* kernel_thread_function(void* arg) {
     mn_kernel_thread_t* kthread = (mn_kernel_thread_t*)arg;
     int k_id = kthread->id;
-    
-    // Initialize the partial product for this kernel thread
+   
     partial_products[k_id] = 1LL;
     
-    // Get the context of the kernel thread
+    // get the main context to be swithced to first user thread 
     getcontext(&kthread->k_context);
 
     if (getcontext(&kthread->k_context) == -1) {
@@ -71,7 +64,7 @@ void* kernel_thread_function(void* arg) {
         return NULL;
     }
     
-    // Set the current thread for this kernel thread to the first assigned thread
+    // if the code runs correctly, it'll always be first thread in it's kernel grp
     if (kthread->num_assigned > 0) {
         int first_thread_id = kthread->assigned_threads[0]->id;
         kthread->current_thread = kthread->assigned_threads[0];
@@ -80,17 +73,17 @@ void* kernel_thread_function(void* arg) {
         printf("[K-Thread %d] Starting first U-Thread-%d\n", k_id, first_thread_id);
         uthreads[first_thread_id].state = THREAD_RUNNING;
         
-        // Switch to the first thread
+        // allot cpu core to uthread by swapping context
         if (swapcontext(&kthread->k_context, &uthreads[first_thread_id].context) == -1) {
             perror("swapcontext failed");
             return NULL;
         }
     }
     
-    // Wait for both user threads to complete
+    // wait for both the user threads to complete
     mn_thread_wait(kthread);
     
-    // Compute the partial product from both user threads
+    // after both threads has completed, u can find the product for the entire k thread
     for (int i = 0; i < kthread->num_assigned; i++) {
         int thread_id = kthread->assigned_threads[i]->id;
         if (thread_results[thread_id] != 0) {  // Add check for valid result
@@ -104,7 +97,7 @@ void* kernel_thread_function(void* arg) {
 }
 
 int main() {
-    // Initialize with 6 user threads, 3 kernel threads, no preemption (0, 0)
+    // 6-> user thread, 3-> kernel thread, not using round robin -> so 0 : timequantum and burst time
     mn_thread_init(6, 3, 0, 0);
     int* thread_ids[num_uthreads];
     
@@ -140,10 +133,6 @@ int main() {
             perror("Failed to allocate stack for user thread");
             return -1;
         }
-        uthreads[i].context.uc_stack.ss_size = STACK_SIZE;
-        uthreads[i].context.uc_stack.ss_flags = 0;
-        uthreads[i].context.uc_link = &kthreads[kernel_thread_id].k_context;
-        
         // Create the user thread
         if (mn_thread_create(&uthreads[i], compute_partial_factorial, thread_ids[i]) != 0) {
             printf("Thread creation failed\n");
@@ -154,17 +143,16 @@ int main() {
         kthreads[kernel_thread_id].assigned_threads[kthreads[kernel_thread_id].num_assigned++] = &uthreads[i];
     }
     
-    // Start kernel threads
+    // start kernel thread
     for (int i = 0; i < num_kthreads; i++) {
         pthread_create(&kthreads[i].pthread, NULL, kernel_thread_function, &kthreads[i]);
     }
     
-    // Wait for kernel threads to complete
+    //waiting for all kernel thread to join
     for (int i = 0; i < num_kthreads; i++) {
         pthread_join(kthreads[i].pthread, NULL);
     }
-    
-    // Calculate final factorial
+
     long long int factorial = 1LL;
     for (int i = 0; i < num_kthreads; i++) {
         factorial *= partial_products[i];
