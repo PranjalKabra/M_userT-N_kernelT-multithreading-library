@@ -63,7 +63,7 @@ mn_thread_lib/
 ### Building the Project
 1. Clone the repository:
 ```bash
-git clone https://github.com/PranjalKabra/M_userT_Nkernel ...
+git clone https://github.com/PranjalKabra/M_userT-N_kernelT-multithreading-library.git
 cd mn_thread_lib
 ```
 
