@@ -122,5 +122,25 @@ Round Robin algorithm is implemented within each kernel thread and all user thre
 
 ## Test Factorial Calculation - Explaining the Output
 
+In this example, Let's break from the usual 4 kernel threads and let's make **3 kernel threads(for better generalization)**. Thus N should preferably be a multiple of 3.
+
+Each kernel thread has **2 user threads.**
+
+Here N = 15, which you can change by editing this file.
+
+Now  15/3 = 5, So for each kernel thread, I have define the range of products they need to calculate
+
+**K0 -> [1-5]
+K1 -> [6-10]
+K2 -> [11-15]**
+
+Now since each Kernel thread has 2 user thread, this range of product is then divided in two.  For example, K0 has 2 user threads : U0 and U3, thus the division is like U0 -> [1-3] and U3 -> [4-5].
+
+**Importance of mn_thread_wait() function -**
+This thread function will not allow a kernel thread to exit **until both of its user threads have completed their work**( i.e. they have terminated ). This guarantees that the kernel thread doesn't miss computing the product of any number and provides the correct answer.
+
+After this is done, We have the stored products calculated by each thread. Now all that remains is to **multiply the 3 partial products of threads** and provide with the final answer, once all three kernel threads have completed their execution.
+
+
 
 
