@@ -108,11 +108,16 @@ build/
 ```
 
 ## Test HTTP Simulation - Explaining the Output
-So, The test file "test_http_sim.c" is a stimulation of how http requests when made are entertained by the server in the hypothesis that there is a main top server under whom are 4 servers, those 4 servers can work parallely, explaining the resemblance to **kernel threads**. 
-Now I want to fetch information from 16 pages , resembling to **16 user threads**. Since at a time only 4 requests can be entertained(4 servers), 4 user threads are mapped to 4 kernel threads. But that would leave us to a **delayed response time for the other user threads**, so to improve responsiveness, **each kernel thread is alloted 4 user threads** and the user threads get their fair share of turn to request the service from server(here CPU)
-Now the user threads are divided to kernel thread on the logiv that 
+So, The test file "test_http_sim.c" is a stimulation of how http requests when made are entertained by the server in the hypothesis that there is a main top server under whom are 4 servers, those 4 servers can work parallely, explaining the resemblance to **kernel threads**.  
+
+Now I want to fetch information from 16 pages , resembling to **16 user threads**. Since at a time only 4 requests can be entertained(4 servers), 4 user threads are mapped to 4 kernel threads. But that would leave us to a **delayed response time for the other user threads**, so to improve responsiveness, **each kernel thread is alloted 4 user threads** and the user threads get their fair share of turn to request the service from server(here CPU).
+
+Now the user threads are divided to kernel thread on the logic that
+
 KERNEL THREAD0 -> U0,U4,U8,U12.
+
 KERNEL THREAD1 -> U1,U5,U9,U13 .... and so on. 
+
 Round Robin algorithm is implemented within each kernel thread and all user threads are prempted after a **time quantum of 5 units**. The **burst time of each user thread is declared as 12 units**. So premptions would occur when remaining burst time would be **12 - 5 = 7 units, then further ar 7 - 5 = 2 units** and since now remaning time < time quantum, the the thread will exit marking it's completion and no premption would be there.
 
 ## Test Factorial Calculation - Explaining the Output
