@@ -7,7 +7,7 @@
 
 #define THREAD_RUNNING 0
 #define THREAD_READY 1
-#define THREAD_BLOCKED = 2 // not required as such inmy test examples
+#define THREAD_BLOCKED 2 // not required as such inmy test examples
 #define THREAD_TERMINATED 3
 #define MAX_KTHREADS 4    // Maximum kernel threads
 #define MAX_UTHREADS 128   // Maximum user threads
