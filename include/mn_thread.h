@@ -30,6 +30,12 @@ typedef struct mn_kernel_thread {
     mn_thread_t* current_thread;
 } mn_kernel_thread_t;
 
+/*
+The extern keyword is a declaration that tells the compiler: "This variable exists, but it is defined elsewhere."
+Purpose: It allows you to use a variable that was defined in a different source file.
+Behavior: It does not allocate memory for the variable; it simply references an existing memory address.
+*/
+
 extern mn_thread_t uthreads[MAX_UTHREADS];
 extern mn_kernel_thread_t kthreads[MAX_KTHREADS];
 extern int current_thread_per_kthread[MAX_KTHREADS]; 

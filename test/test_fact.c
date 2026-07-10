@@ -127,12 +127,7 @@ int main() {
         uthreads[i].kernel_thread_id = kernel_thread_id;
         uthreads[i].state = THREAD_READY;
         
-        // Allocate stack for the user thread
-        uthreads[i].context.uc_stack.ss_sp = malloc(STACK_SIZE);
-        if (uthreads[i].context.uc_stack.ss_sp == NULL) {
-            perror("Failed to allocate stack for user thread");
-            return -1;
-        }
+        
         // Create the user thread
         if (mn_thread_create(&uthreads[i], compute_partial_factorial, thread_ids[i]) != 0) {
             printf("Thread creation failed\n");
