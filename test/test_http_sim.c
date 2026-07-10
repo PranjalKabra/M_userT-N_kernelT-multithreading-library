@@ -96,12 +96,6 @@ int main() {
             thread_ids[thread_idx] = malloc(sizeof(int));
             *thread_ids[thread_idx] = thread_idx;
 
-            // Allocate stack per user thread
-            uthreads[thread_idx].context.uc_stack.ss_sp = malloc(STACK_SIZE); // set the stack ponter
-            if (uthreads[thread_idx].context.uc_stack.ss_sp == NULL) {
-                perror("Failed to allocate stack for user thread");
-                return -1;
-            }
 
             // set the thread identitiy and allocate it it's kernel thread before starting its routine
             uthreads[thread_idx].id = thread_idx;
